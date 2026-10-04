@@ -1,0 +1,471 @@
+<?xml version='1.0' encoding='utf-8'?>
+<form version="1.1" theme="dark">
+  <label>CIM Data Model Audit</label>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="audit_time" searchWhenChanged="false">
+      <label>بازه زمانی</label>
+      <default>
+        <earliest>-60m@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="text" token="index_pattern" searchWhenChanged="false">
+      <label>فیلتر ایندکس برای دیتا مدل‌ها</label>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="summaries_only" searchWhenChanged="false">
+      <label>حالت جست‌وجوی دیتا مدل</label>
+      <choice value="false">کل بازه زمانی</choice>
+      <choice value="true">فقط داده‌های Acceleration</choice>
+      <default>false</default>
+    </input>
+  </fieldset>
+  <search id="dm_web">
+    <query>| tstats summariesonly=$summaries_only$ allow_old_summaries=false
+    count AS events
+    dc(source) AS source_dc
+    dc(sourcetype) AS sourcetype_dc
+    dc(Web.url) AS url_dc
+    count(Web.url) AS url_filled
+    dc(Web.uri_path) AS uri_path_dc
+    count(Web.uri_path) AS uri_path_filled
+    dc(Web.uri_query) AS uri_query_dc
+    count(Web.uri_query) AS uri_query_filled
+    dc(Web.src) AS src_dc
+    count(Web.src) AS src_filled
+    dc(Web.dest) AS dest_dc
+    count(Web.dest) AS dest_filled
+    dc(Web.http_method) AS http_method_dc
+    count(Web.http_method) AS http_method_filled
+    dc(Web.status) AS status_dc
+    count(Web.status) AS status_filled
+    dc(Web.http_user_agent) AS http_user_agent_dc
+    count(Web.http_user_agent) AS http_user_agent_filled
+    dc(Web.user) AS user_dc
+    count(Web.user) AS user_filled
+    dc(Web.app) AS app_dc
+    count(Web.app) AS app_filled
+    dc(Web.site) AS site_dc
+    count(Web.site) AS site_filled
+    FROM datamodel=Web.Web
+    WHERE index=$index_pattern|s$ earliest=$audit_time.earliest$ latest=$audit_time.latest$
+    BY index
+| eval dataset="Web"
+| fillnull value=0 url_dc url_filled uri_path_dc uri_path_filled uri_query_dc uri_query_filled src_dc src_filled dest_dc dest_filled http_method_dc http_method_filled status_dc status_filled http_user_agent_dc http_user_agent_filled user_dc user_filled app_dc app_filled site_dc site_filled
+| eval url_pct=round(100*url_filled/events,2)
+| eval uri_path_pct=round(100*uri_path_filled/events,2)
+| eval uri_query_pct=round(100*uri_query_filled/events,2)
+| eval src_pct=round(100*src_filled/events,2)
+| eval dest_pct=round(100*dest_filled/events,2)
+| eval http_method_pct=round(100*http_method_filled/events,2)
+| eval status_pct=round(100*status_filled/events,2)
+| eval http_user_agent_pct=round(100*http_user_agent_filled/events,2)
+| eval user_pct=round(100*user_filled/events,2)
+| eval app_pct=round(100*app_filled/events,2)
+| eval site_pct=round(100*site_filled/events,2)</query>
+    <earliest>$audit_time.earliest$</earliest>
+    <latest>$audit_time.latest$</latest>
+  </search>
+  <search id="dm_network">
+    <query>| tstats summariesonly=$summaries_only$ allow_old_summaries=false
+    count AS events
+    dc(source) AS source_dc
+    dc(sourcetype) AS sourcetype_dc
+    dc(All_Traffic.src) AS src_dc
+    count(All_Traffic.src) AS src_filled
+    dc(All_Traffic.dest) AS dest_dc
+    count(All_Traffic.dest) AS dest_filled
+    dc(All_Traffic.src_port) AS src_port_dc
+    count(All_Traffic.src_port) AS src_port_filled
+    dc(All_Traffic.dest_port) AS dest_port_dc
+    count(All_Traffic.dest_port) AS dest_port_filled
+    dc(All_Traffic.transport) AS transport_dc
+    count(All_Traffic.transport) AS transport_filled
+    dc(All_Traffic.action) AS action_dc
+    count(All_Traffic.action) AS action_filled
+    dc(All_Traffic.app) AS app_dc
+    count(All_Traffic.app) AS app_filled
+    dc(All_Traffic.bytes) AS bytes_dc
+    count(All_Traffic.bytes) AS bytes_filled
+    dc(All_Traffic.bytes_in) AS bytes_in_dc
+    count(All_Traffic.bytes_in) AS bytes_in_filled
+    dc(All_Traffic.bytes_out) AS bytes_out_dc
+    count(All_Traffic.bytes_out) AS bytes_out_filled
+    dc(All_Traffic.direction) AS direction_dc
+    count(All_Traffic.direction) AS direction_filled
+    dc(All_Traffic.user) AS user_dc
+    count(All_Traffic.user) AS user_filled
+    FROM datamodel=Network_Traffic.All_Traffic
+    WHERE index=$index_pattern|s$ earliest=$audit_time.earliest$ latest=$audit_time.latest$
+    BY index
+| eval dataset="All_Traffic"
+| fillnull value=0 src_dc src_filled dest_dc dest_filled src_port_dc src_port_filled dest_port_dc dest_port_filled transport_dc transport_filled action_dc action_filled app_dc app_filled bytes_dc bytes_filled bytes_in_dc bytes_in_filled bytes_out_dc bytes_out_filled direction_dc direction_filled user_dc user_filled
+| eval src_pct=round(100*src_filled/events,2)
+| eval dest_pct=round(100*dest_filled/events,2)
+| eval src_port_pct=round(100*src_port_filled/events,2)
+| eval dest_port_pct=round(100*dest_port_filled/events,2)
+| eval transport_pct=round(100*transport_filled/events,2)
+| eval action_pct=round(100*action_filled/events,2)
+| eval app_pct=round(100*app_filled/events,2)
+| eval bytes_pct=round(100*bytes_filled/events,2)
+| eval bytes_in_pct=round(100*bytes_in_filled/events,2)
+| eval bytes_out_pct=round(100*bytes_out_filled/events,2)
+| eval direction_pct=round(100*direction_filled/events,2)
+| eval user_pct=round(100*user_filled/events,2)</query>
+    <earliest>$audit_time.earliest$</earliest>
+    <latest>$audit_time.latest$</latest>
+  </search>
+  <search id="dm_dns">
+    <query>| tstats summariesonly=$summaries_only$ allow_old_summaries=false
+    count AS events
+    dc(source) AS source_dc
+    dc(sourcetype) AS sourcetype_dc
+    dc(DNS.query) AS query_dc
+    count(DNS.query) AS query_filled
+    dc(DNS.answer) AS answer_dc
+    count(DNS.answer) AS answer_filled
+    dc(DNS.src) AS src_dc
+    count(DNS.src) AS src_filled
+    dc(DNS.dest) AS dest_dc
+    count(DNS.dest) AS dest_filled
+    dc(DNS.query_type) AS query_type_dc
+    count(DNS.query_type) AS query_type_filled
+    dc(DNS.record_type) AS record_type_dc
+    count(DNS.record_type) AS record_type_filled
+    dc(DNS.reply_code) AS reply_code_dc
+    count(DNS.reply_code) AS reply_code_filled
+    dc(DNS.reply_code_id) AS reply_code_id_dc
+    count(DNS.reply_code_id) AS reply_code_id_filled
+    dc(DNS.message_type) AS message_type_dc
+    count(DNS.message_type) AS message_type_filled
+    dc(DNS.dest_port) AS dest_port_dc
+    count(DNS.dest_port) AS dest_port_filled
+    FROM datamodel=Network_Resolution.DNS
+    WHERE index=$index_pattern|s$ earliest=$audit_time.earliest$ latest=$audit_time.latest$
+    BY index
+| eval dataset="DNS"
+| fillnull value=0 query_dc query_filled answer_dc answer_filled src_dc src_filled dest_dc dest_filled query_type_dc query_type_filled record_type_dc record_type_filled reply_code_dc reply_code_filled reply_code_id_dc reply_code_id_filled message_type_dc message_type_filled dest_port_dc dest_port_filled
+| eval query_pct=round(100*query_filled/events,2)
+| eval answer_pct=round(100*answer_filled/events,2)
+| eval src_pct=round(100*src_filled/events,2)
+| eval dest_pct=round(100*dest_filled/events,2)
+| eval query_type_pct=round(100*query_type_filled/events,2)
+| eval record_type_pct=round(100*record_type_filled/events,2)
+| eval reply_code_pct=round(100*reply_code_filled/events,2)
+| eval reply_code_id_pct=round(100*reply_code_id_filled/events,2)
+| eval message_type_pct=round(100*message_type_filled/events,2)
+| eval dest_port_pct=round(100*dest_port_filled/events,2)</query>
+    <earliest>$audit_time.earliest$</earliest>
+    <latest>$audit_time.latest$</latest>
+  </search>
+  <search id="dm_endpoint">
+    <query>| tstats summariesonly=$summaries_only$ allow_old_summaries=false
+    count AS events
+    dc(source) AS source_dc
+    dc(sourcetype) AS sourcetype_dc
+    dc(Processes.dest) AS dest_dc
+    count(Processes.dest) AS dest_filled
+    dc(Processes.user) AS user_dc
+    count(Processes.user) AS user_filled
+    dc(Processes.process_name) AS process_name_dc
+    count(Processes.process_name) AS process_name_filled
+    dc(Processes.process) AS process_dc
+    count(Processes.process) AS process_filled
+    dc(Processes.process_exec) AS process_exec_dc
+    count(Processes.process_exec) AS process_exec_filled
+    dc(Processes.process_path) AS process_path_dc
+    count(Processes.process_path) AS process_path_filled
+    dc(Processes.process_id) AS process_id_dc
+    count(Processes.process_id) AS process_id_filled
+    dc(Processes.process_guid) AS process_guid_dc
+    count(Processes.process_guid) AS process_guid_filled
+    dc(Processes.parent_process_name) AS parent_process_name_dc
+    count(Processes.parent_process_name) AS parent_process_name_filled
+    dc(Processes.parent_process) AS parent_process_dc
+    count(Processes.parent_process) AS parent_process_filled
+    dc(Processes.parent_process_id) AS parent_process_id_dc
+    count(Processes.parent_process_id) AS parent_process_id_filled
+    dc(Processes.action) AS action_dc
+    count(Processes.action) AS action_filled
+    FROM datamodel=Endpoint.Processes
+    WHERE index=$index_pattern|s$ earliest=$audit_time.earliest$ latest=$audit_time.latest$
+    BY index
+| eval dataset="Processes"
+| fillnull value=0 dest_dc dest_filled user_dc user_filled process_name_dc process_name_filled process_dc process_filled process_exec_dc process_exec_filled process_path_dc process_path_filled process_id_dc process_id_filled process_guid_dc process_guid_filled parent_process_name_dc parent_process_name_filled parent_process_dc parent_process_filled parent_process_id_dc parent_process_id_filled action_dc action_filled
+| eval dest_pct=round(100*dest_filled/events,2)
+| eval user_pct=round(100*user_filled/events,2)
+| eval process_name_pct=round(100*process_name_filled/events,2)
+| eval process_pct=round(100*process_filled/events,2)
+| eval process_exec_pct=round(100*process_exec_filled/events,2)
+| eval process_path_pct=round(100*process_path_filled/events,2)
+| eval process_id_pct=round(100*process_id_filled/events,2)
+| eval process_guid_pct=round(100*process_guid_filled/events,2)
+| eval parent_process_name_pct=round(100*parent_process_name_filled/events,2)
+| eval parent_process_pct=round(100*parent_process_filled/events,2)
+| eval parent_process_id_pct=round(100*parent_process_id_filled/events,2)
+| eval action_pct=round(100*action_filled/events,2)
+| eval audit_metrics=mvappend("Processes.dest|".tostring(dest_dc)."|".tostring(dest_filled)."|".tostring(dest_pct), "Processes.user|".tostring(user_dc)."|".tostring(user_filled)."|".tostring(user_pct), "Processes.process_name|".tostring(process_name_dc)."|".tostring(process_name_filled)."|".tostring(process_name_pct), "Processes.process|".tostring(process_dc)."|".tostring(process_filled)."|".tostring(process_pct), "Processes.process_exec|".tostring(process_exec_dc)."|".tostring(process_exec_filled)."|".tostring(process_exec_pct), "Processes.process_path|".tostring(process_path_dc)."|".tostring(process_path_filled)."|".tostring(process_path_pct), "Processes.process_id|".tostring(process_id_dc)."|".tostring(process_id_filled)."|".tostring(process_id_pct), "Processes.process_guid|".tostring(process_guid_dc)."|".tostring(process_guid_filled)."|".tostring(process_guid_pct), "Processes.parent_process_name|".tostring(parent_process_name_dc)."|".tostring(parent_process_name_filled)."|".tostring(parent_process_name_pct), "Processes.parent_process|".tostring(parent_process_dc)."|".tostring(parent_process_filled)."|".tostring(parent_process_pct), "Processes.parent_process_id|".tostring(parent_process_id_dc)."|".tostring(parent_process_id_filled)."|".tostring(parent_process_id_pct), "Processes.action|".tostring(action_dc)."|".tostring(action_filled)."|".tostring(action_pct))
+| fields index dataset events source_dc sourcetype_dc audit_metrics
+| mvexpand audit_metrics
+| eval audit_parts=split(audit_metrics,"|")
+| eval field=mvindex(audit_parts,0), distinct_count=tonumber(mvindex(audit_parts,1)), filled_events=tonumber(mvindex(audit_parts,2)), filled_pct=tonumber(mvindex(audit_parts,3))
+| fields index dataset events source_dc sourcetype_dc field distinct_count filled_events filled_pct
+| append maxout=50000 maxtime=600 [
+| tstats summariesonly=$summaries_only$ allow_old_summaries=false
+    count AS events
+    dc(source) AS source_dc
+    dc(sourcetype) AS sourcetype_dc
+    dc(Filesystem.dest) AS dest_dc
+    count(Filesystem.dest) AS dest_filled
+    dc(Filesystem.user) AS user_dc
+    count(Filesystem.user) AS user_filled
+    dc(Filesystem.file_name) AS file_name_dc
+    count(Filesystem.file_name) AS file_name_filled
+    dc(Filesystem.file_path) AS file_path_dc
+    count(Filesystem.file_path) AS file_path_filled
+    dc(Filesystem.file_hash) AS file_hash_dc
+    count(Filesystem.file_hash) AS file_hash_filled
+    dc(Filesystem.file_size) AS file_size_dc
+    count(Filesystem.file_size) AS file_size_filled
+    dc(Filesystem.action) AS action_dc
+    count(Filesystem.action) AS action_filled
+    FROM datamodel=Endpoint.Filesystem
+    WHERE index=$index_pattern|s$ earliest=$audit_time.earliest$ latest=$audit_time.latest$
+    BY index
+| eval dataset="Filesystem"
+| fillnull value=0 dest_dc dest_filled user_dc user_filled file_name_dc file_name_filled file_path_dc file_path_filled file_hash_dc file_hash_filled file_size_dc file_size_filled action_dc action_filled
+| eval dest_pct=round(100*dest_filled/events,2)
+| eval user_pct=round(100*user_filled/events,2)
+| eval file_name_pct=round(100*file_name_filled/events,2)
+| eval file_path_pct=round(100*file_path_filled/events,2)
+| eval file_hash_pct=round(100*file_hash_filled/events,2)
+| eval file_size_pct=round(100*file_size_filled/events,2)
+| eval action_pct=round(100*action_filled/events,2)
+| eval audit_metrics=mvappend("Filesystem.dest|".tostring(dest_dc)."|".tostring(dest_filled)."|".tostring(dest_pct), "Filesystem.user|".tostring(user_dc)."|".tostring(user_filled)."|".tostring(user_pct), "Filesystem.file_name|".tostring(file_name_dc)."|".tostring(file_name_filled)."|".tostring(file_name_pct), "Filesystem.file_path|".tostring(file_path_dc)."|".tostring(file_path_filled)."|".tostring(file_path_pct), "Filesystem.file_hash|".tostring(file_hash_dc)."|".tostring(file_hash_filled)."|".tostring(file_hash_pct), "Filesystem.file_size|".tostring(file_size_dc)."|".tostring(file_size_filled)."|".tostring(file_size_pct), "Filesystem.action|".tostring(action_dc)."|".tostring(action_filled)."|".tostring(action_pct))
+| fields index dataset events source_dc sourcetype_dc audit_metrics
+| mvexpand audit_metrics
+| eval audit_parts=split(audit_metrics,"|")
+| eval field=mvindex(audit_parts,0), distinct_count=tonumber(mvindex(audit_parts,1)), filled_events=tonumber(mvindex(audit_parts,2)), filled_pct=tonumber(mvindex(audit_parts,3))
+| fields index dataset events source_dc sourcetype_dc field distinct_count filled_events filled_pct
+]
+| append maxout=50000 maxtime=600 [
+| tstats summariesonly=$summaries_only$ allow_old_summaries=false
+    count AS events
+    dc(source) AS source_dc
+    dc(sourcetype) AS sourcetype_dc
+    dc(Services.dest) AS dest_dc
+    count(Services.dest) AS dest_filled
+    dc(Services.user) AS user_dc
+    count(Services.user) AS user_filled
+    dc(Services.service) AS service_dc
+    count(Services.service) AS service_filled
+    dc(Services.service_name) AS service_name_dc
+    count(Services.service_name) AS service_name_filled
+    dc(Services.service_path) AS service_path_dc
+    count(Services.service_path) AS service_path_filled
+    dc(Services.start_mode) AS start_mode_dc
+    count(Services.start_mode) AS start_mode_filled
+    dc(Services.status) AS status_dc
+    count(Services.status) AS status_filled
+    FROM datamodel=Endpoint.Services
+    WHERE index=$index_pattern|s$ earliest=$audit_time.earliest$ latest=$audit_time.latest$
+    BY index
+| eval dataset="Services"
+| fillnull value=0 dest_dc dest_filled user_dc user_filled service_dc service_filled service_name_dc service_name_filled service_path_dc service_path_filled start_mode_dc start_mode_filled status_dc status_filled
+| eval dest_pct=round(100*dest_filled/events,2)
+| eval user_pct=round(100*user_filled/events,2)
+| eval service_pct=round(100*service_filled/events,2)
+| eval service_name_pct=round(100*service_name_filled/events,2)
+| eval service_path_pct=round(100*service_path_filled/events,2)
+| eval start_mode_pct=round(100*start_mode_filled/events,2)
+| eval status_pct=round(100*status_filled/events,2)
+| eval audit_metrics=mvappend("Services.dest|".tostring(dest_dc)."|".tostring(dest_filled)."|".tostring(dest_pct), "Services.user|".tostring(user_dc)."|".tostring(user_filled)."|".tostring(user_pct), "Services.service|".tostring(service_dc)."|".tostring(service_filled)."|".tostring(service_pct), "Services.service_name|".tostring(service_name_dc)."|".tostring(service_name_filled)."|".tostring(service_name_pct), "Services.service_path|".tostring(service_path_dc)."|".tostring(service_path_filled)."|".tostring(service_path_pct), "Services.start_mode|".tostring(start_mode_dc)."|".tostring(start_mode_filled)."|".tostring(start_mode_pct), "Services.status|".tostring(status_dc)."|".tostring(status_filled)."|".tostring(status_pct))
+| fields index dataset events source_dc sourcetype_dc audit_metrics
+| mvexpand audit_metrics
+| eval audit_parts=split(audit_metrics,"|")
+| eval field=mvindex(audit_parts,0), distinct_count=tonumber(mvindex(audit_parts,1)), filled_events=tonumber(mvindex(audit_parts,2)), filled_pct=tonumber(mvindex(audit_parts,3))
+| fields index dataset events source_dc sourcetype_dc field distinct_count filled_events filled_pct
+]
+| append maxout=50000 maxtime=600 [
+| tstats summariesonly=$summaries_only$ allow_old_summaries=false
+    count AS events
+    dc(source) AS source_dc
+    dc(sourcetype) AS sourcetype_dc
+    dc(Registry.dest) AS dest_dc
+    count(Registry.dest) AS dest_filled
+    dc(Registry.user) AS user_dc
+    count(Registry.user) AS user_filled
+    dc(Registry.registry_path) AS registry_path_dc
+    count(Registry.registry_path) AS registry_path_filled
+    dc(Registry.registry_key_name) AS registry_key_name_dc
+    count(Registry.registry_key_name) AS registry_key_name_filled
+    dc(Registry.registry_value_name) AS registry_value_name_dc
+    count(Registry.registry_value_name) AS registry_value_name_filled
+    dc(Registry.registry_value_data) AS registry_value_data_dc
+    count(Registry.registry_value_data) AS registry_value_data_filled
+    dc(Registry.action) AS action_dc
+    count(Registry.action) AS action_filled
+    FROM datamodel=Endpoint.Registry
+    WHERE index=$index_pattern|s$ earliest=$audit_time.earliest$ latest=$audit_time.latest$
+    BY index
+| eval dataset="Registry"
+| fillnull value=0 dest_dc dest_filled user_dc user_filled registry_path_dc registry_path_filled registry_key_name_dc registry_key_name_filled registry_value_name_dc registry_value_name_filled registry_value_data_dc registry_value_data_filled action_dc action_filled
+| eval dest_pct=round(100*dest_filled/events,2)
+| eval user_pct=round(100*user_filled/events,2)
+| eval registry_path_pct=round(100*registry_path_filled/events,2)
+| eval registry_key_name_pct=round(100*registry_key_name_filled/events,2)
+| eval registry_value_name_pct=round(100*registry_value_name_filled/events,2)
+| eval registry_value_data_pct=round(100*registry_value_data_filled/events,2)
+| eval action_pct=round(100*action_filled/events,2)
+| eval audit_metrics=mvappend("Registry.dest|".tostring(dest_dc)."|".tostring(dest_filled)."|".tostring(dest_pct), "Registry.user|".tostring(user_dc)."|".tostring(user_filled)."|".tostring(user_pct), "Registry.registry_path|".tostring(registry_path_dc)."|".tostring(registry_path_filled)."|".tostring(registry_path_pct), "Registry.registry_key_name|".tostring(registry_key_name_dc)."|".tostring(registry_key_name_filled)."|".tostring(registry_key_name_pct), "Registry.registry_value_name|".tostring(registry_value_name_dc)."|".tostring(registry_value_name_filled)."|".tostring(registry_value_name_pct), "Registry.registry_value_data|".tostring(registry_value_data_dc)."|".tostring(registry_value_data_filled)."|".tostring(registry_value_data_pct), "Registry.action|".tostring(action_dc)."|".tostring(action_filled)."|".tostring(action_pct))
+| fields index dataset events source_dc sourcetype_dc audit_metrics
+| mvexpand audit_metrics
+| eval audit_parts=split(audit_metrics,"|")
+| eval field=mvindex(audit_parts,0), distinct_count=tonumber(mvindex(audit_parts,1)), filled_events=tonumber(mvindex(audit_parts,2)), filled_pct=tonumber(mvindex(audit_parts,3))
+| fields index dataset events source_dc sourcetype_dc field distinct_count filled_events filled_pct
+]
+| append maxout=50000 maxtime=600 [
+| tstats summariesonly=$summaries_only$ allow_old_summaries=false
+    count AS events
+    dc(source) AS source_dc
+    dc(sourcetype) AS sourcetype_dc
+    dc(Ports.dest) AS dest_dc
+    count(Ports.dest) AS dest_filled
+    dc(Ports.src) AS src_dc
+    count(Ports.src) AS src_filled
+    dc(Ports.user) AS user_dc
+    count(Ports.user) AS user_filled
+    dc(Ports.dest_port) AS dest_port_dc
+    count(Ports.dest_port) AS dest_port_filled
+    dc(Ports.src_port) AS src_port_dc
+    count(Ports.src_port) AS src_port_filled
+    dc(Ports.transport) AS transport_dc
+    count(Ports.transport) AS transport_filled
+    dc(Ports.state) AS state_dc
+    count(Ports.state) AS state_filled
+    dc(Ports.process_id) AS process_id_dc
+    count(Ports.process_id) AS process_id_filled
+    dc(Ports.process_guid) AS process_guid_dc
+    count(Ports.process_guid) AS process_guid_filled
+    FROM datamodel=Endpoint.Ports
+    WHERE index=$index_pattern|s$ earliest=$audit_time.earliest$ latest=$audit_time.latest$
+    BY index
+| eval dataset="Ports"
+| fillnull value=0 dest_dc dest_filled src_dc src_filled user_dc user_filled dest_port_dc dest_port_filled src_port_dc src_port_filled transport_dc transport_filled state_dc state_filled process_id_dc process_id_filled process_guid_dc process_guid_filled
+| eval dest_pct=round(100*dest_filled/events,2)
+| eval src_pct=round(100*src_filled/events,2)
+| eval user_pct=round(100*user_filled/events,2)
+| eval dest_port_pct=round(100*dest_port_filled/events,2)
+| eval src_port_pct=round(100*src_port_filled/events,2)
+| eval transport_pct=round(100*transport_filled/events,2)
+| eval state_pct=round(100*state_filled/events,2)
+| eval process_id_pct=round(100*process_id_filled/events,2)
+| eval process_guid_pct=round(100*process_guid_filled/events,2)
+| eval audit_metrics=mvappend("Ports.dest|".tostring(dest_dc)."|".tostring(dest_filled)."|".tostring(dest_pct), "Ports.src|".tostring(src_dc)."|".tostring(src_filled)."|".tostring(src_pct), "Ports.user|".tostring(user_dc)."|".tostring(user_filled)."|".tostring(user_pct), "Ports.dest_port|".tostring(dest_port_dc)."|".tostring(dest_port_filled)."|".tostring(dest_port_pct), "Ports.src_port|".tostring(src_port_dc)."|".tostring(src_port_filled)."|".tostring(src_port_pct), "Ports.transport|".tostring(transport_dc)."|".tostring(transport_filled)."|".tostring(transport_pct), "Ports.state|".tostring(state_dc)."|".tostring(state_filled)."|".tostring(state_pct), "Ports.process_id|".tostring(process_id_dc)."|".tostring(process_id_filled)."|".tostring(process_id_pct), "Ports.process_guid|".tostring(process_guid_dc)."|".tostring(process_guid_filled)."|".tostring(process_guid_pct))
+| fields index dataset events source_dc sourcetype_dc audit_metrics
+| mvexpand audit_metrics
+| eval audit_parts=split(audit_metrics,"|")
+| eval field=mvindex(audit_parts,0), distinct_count=tonumber(mvindex(audit_parts,1)), filled_events=tonumber(mvindex(audit_parts,2)), filled_pct=tonumber(mvindex(audit_parts,3))
+| fields index dataset events source_dc sourcetype_dc field distinct_count filled_events filled_pct
+]</query>
+    <earliest>$audit_time.earliest$</earliest>
+    <latest>$audit_time.latest$</latest>
+  </search>
+  <row>
+    <panel>
+      <title>All Indexes</title>
+      <html>
+        <style>.dashboard-panel h2 { background:#287f85 !important; color:#fff !important; text-align:center !important; border-radius:8px 8px 0 0; }</style>
+      </html>
+      <table>
+        <search>
+          <query>| rest splunk_server=* /services/data/indexes count=0
+| rename title AS index
+| stats values(datatype) AS datatype values(disabled) AS disabled values(splunk_server) AS servers BY index
+| table index datatype disabled servers
+| sort 0 index</query>
+        </search>
+        <option name="count">25</option>
+        <option name="drilldown">none</option>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Web — Data-model field audit by index</title>
+      <table>
+        <search base="dm_web">
+          <query>| table index events source_dc sourcetype_dc url_dc uri_path_dc uri_query_dc src_dc dest_dc http_method_dc status_dc http_user_agent_dc user_dc app_dc site_dc url_filled url_pct uri_path_filled uri_path_pct uri_query_filled uri_query_pct src_filled src_pct dest_filled dest_pct http_method_filled http_method_pct status_filled status_pct http_user_agent_filled http_user_agent_pct user_filled user_pct app_filled app_pct site_filled site_pct
+| sort 0 - events</query>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">none</option>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">false</option>
+        <format type="color" field="src_pct">
+          <colorPalette type="list">[#FCE8E6,#FFF4CE,#E6F4EA]</colorPalette>
+          <scale type="threshold">50,90</scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Network Traffic — Data-model field audit by index</title>
+      <table>
+        <search base="dm_network">
+          <query>| table index events source_dc sourcetype_dc src_dc dest_dc src_port_dc dest_port_dc transport_dc action_dc app_dc bytes_dc bytes_in_dc bytes_out_dc direction_dc user_dc src_filled src_pct dest_filled dest_pct src_port_filled src_port_pct dest_port_filled dest_port_pct transport_filled transport_pct action_filled action_pct app_filled app_pct bytes_filled bytes_pct bytes_in_filled bytes_in_pct bytes_out_filled bytes_out_pct direction_filled direction_pct user_filled user_pct
+| sort 0 - events</query>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">none</option>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">false</option>
+        <format type="color" field="src_pct">
+          <colorPalette type="list">[#FCE8E6,#FFF4CE,#E6F4EA]</colorPalette>
+          <scale type="threshold">50,90</scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Endpoint — Data-model field audit by index and dataset</title>
+      <table>
+        <search base="dm_endpoint">
+          <query>| table index dataset events field distinct_count filled_events filled_pct source_dc sourcetype_dc
+| sort 0 index dataset field</query>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">none</option>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">false</option>
+        <format type="color" field="filled_pct">
+          <colorPalette type="list">[#FCE8E6,#FFF4CE,#E6F4EA]</colorPalette>
+          <scale type="threshold">50,90</scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Network Resolution (DNS) — Data-model field audit by index</title>
+      <table>
+        <search base="dm_dns">
+          <query>| table index events source_dc sourcetype_dc query_dc answer_dc src_dc dest_dc query_type_dc record_type_dc reply_code_dc reply_code_id_dc message_type_dc dest_port_dc query_filled query_pct answer_filled answer_pct src_filled src_pct dest_filled dest_pct query_type_filled query_type_pct record_type_filled record_type_pct reply_code_filled reply_code_pct reply_code_id_filled reply_code_id_pct message_type_filled message_type_pct dest_port_filled dest_port_pct
+| sort 0 - events</query>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">none</option>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">false</option>
+        <format type="color" field="src_pct">
+          <colorPalette type="list">[#FCE8E6,#FFF4CE,#E6F4EA]</colorPalette>
+          <scale type="threshold">50,90</scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>
