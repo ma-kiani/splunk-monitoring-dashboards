@@ -1,0 +1,284 @@
+<form version="1.1" theme="dark">
+  <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+  <label>Cisco Switch Overview</label>
+  <description>نمای کلی وضعیت دریافت لاگ، پوشش تجهیزات و سطح Severity مشاهده‌شده در سوئیچ‌های Cisco</description>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="tok_time">
+      <label>بازه زمانی</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="tok_device">
+      <label>سوئیچ</label>
+      <choice value="*">همه سوئیچ‌ها</choice>
+      <default>*</default>
+      <fieldForLabel>device</fieldForLabel>
+      <fieldForValue>device</fieldForValue>
+      <search>
+        <query>
+          <![CDATA[index=`cisco_index`
+| eval device=coalesce(dvc,host,source)
+| where isnotnull(device)
+| stats count by device
+| sort 0 device]]>
+        </query>
+        <earliest>-7d@d</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <html>
+    <style>
+      .dashboard-panel h2 { background:#2b5f8a !important; color:#fff !important; text-align:center !important; border-radius:8px 8px 0 0; }
+      .uc { direction:rtl; text-align:right; line-height:1.8; padding:8px 12px; border-right:4px solid #3f87c5; background:#17212b; }
+      .uc b { color:#7fc4ff; }
+    </style>
+  </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <title>count of all switches</title>
+      <single>
+        <search>
+          <query>index=`cisco_index`
+| eval device=coalesce(dvc,host)
+| search device="$tok_device$"
+| stats dc(device) as count</query>
+          <earliest>$tok_time.earliest$</earliest>
+          <latest>$tok_time.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">در بازه انتخابی</option>
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <title>سوئیچ‌های فعال در ۱۵ دقیقه اخیر</title>
+      <single>
+        <search>
+          <query>index=`cisco_index` earliest=-15m
+| eval device=coalesce(dvc,host)
+| search device="$tok_device$"
+| stats dc(device) as count</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">دارای حداقل یک رویداد</option>
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <title>سوئیچ‌های Silent در ۲۴ ساعت اخیر</title>
+      <single>
+        <search>
+          <query>index=`cisco_index` earliest=-7d@d
+| eval device=coalesce(dvc,host)
+| search device="$tok_device$"
+| stats latest(_time) as last_seen by device
+| where last_seen &lt; relative_time(now(),"-24h")
+| stats count</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">فعال در ۷ روز، بدون لاگ در ۲۴ ساعت</option>
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <title>حجم کل رویدادها</title>
+      <single>
+        <search>
+          <query>
+            <![CDATA[index=`cisco_index`
+| eval device=coalesce(dvc,host,source)
+| search device="$tok_device$"
+| stats count]]>
+          </query>
+          <earliest>$tok_time.earliest$</earliest>
+          <latest>$tok_time.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="unit">event</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <html>
+        <div class="uc">
+          <b>هدف:</b> بررسی روند دریافت لاگ و مشخص‌شدن افت یا جهش ناگهانی در حجم داده Cisco.</div>
+      </html>
+      <chart>
+        <title>روند دریافت لاگ Cisco</title>
+        <search>
+          <query>
+            <![CDATA[index=`cisco_index`
+| eval device=coalesce(dvc,host,source)
+| search device="$tok_device$"
+| timechart span=30m count as events]]>
+          </query>
+          <earliest>$tok_time.earliest$</earliest>
+          <latest>$tok_time.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="charting.axisTitleY.text">Events</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <html>
+        <div class="uc">
+          <b>هدف:</b> وضعیت onboarding هر سوئیچ، آخرین زمان دریافت لاگ و کیفیت استخراج فیلدها را یکجا نشان می‌دهد. <b>بررسی:</b> تجهیزات Silent، درصد پایین فیلدهای Severity/Mnemonic و تفاوت غیرعادی حجم لاگ بین سوئیچ‌ها بررسی شود.</div>
+      </html>
+      <table>
+        <title>وضعیت Data Onboarding سوئیچ‌ها</title>
+        <search>
+          <query>index=`cisco_index`
+| eval device=coalesce(dvc,host,source), has_severity=if(isnotnull(severity_id) OR isnotnull(severity_name),1,0), has_mnemonic=if(isnotnull(mnemonic),1,0), has_message=if(isnotnull(message_text),1,0)
+| search device="$tok_device$"
+| stats count as Events latest(_time) as LastSeen  by device
+| eval Status=case(LastSeen&gt;=relative_time(now(),"-6h"),"Active",LastSeen&gt;=relative_time(now(),"-48h"),"Delayed",true(),"Silent")
+
+| convert ctime(LastSeen)
+| rename device as Switch
+| table Switch Status LastSeen Events 
+| sort 0 Status Switch</query>
+          <earliest>$tok_time.earliest$</earliest>
+          <latest>$tok_time.latest$</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="Status">
+          <colorPalette type="map">{"Active":"#118832","Delayed":"#F8BE34","Silent":"#D41F1F"}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <html>
+        <div class="uc">
+          <b>هدف:</b> مشخص‌کردن Severityهایی که عملاً از هر سوئیچ دریافت شده‌اند. <b>نکته:</b> «عمیق‌ترین سطح مشاهده‌شده» از روی رویدادهای موجود محاسبه می‌شود و لزوماً برابر مقدار تنظیم‌شده در دستور <code>logging trap</code> نیست.</div>
+      </html>
+      <table>
+        <title>سطح لاگ‌گیری مشاهده‌شده برای هر سوئیچ</title>
+        <search>
+          <query>index=`cisco_index`
+| eval device=coalesce(dvc,host,source), sev=tonumber(severity_id)
+| search device="$tok_device$" sev&gt;=0 sev&lt;=7
+| stats count as Events min(sev) as MostSevere max(sev) as DeepestObserved values(severity_id_and_name) as ObservedLevels by device
+| eval MostSevereName=case(MostSevere=0,"0 - Emergency",MostSevere=1,"1 - Alert",MostSevere=2,"2 - Critical",MostSevere=3,"3 - Error",MostSevere=4,"4 - Warning",MostSevere=5,"5 - Notice",MostSevere=6,"6 - Informational",MostSevere=7,"7 - Debug")
+| eval DeepestObservedName=case(DeepestObserved=0,"0 - Emergency",DeepestObserved=1,"1 - Alert",DeepestObserved=2,"2 - Critical",DeepestObserved=3,"3 - Error",DeepestObserved=4,"4 - Warning",DeepestObserved=5,"5 - Notice",DeepestObserved=6,"6 - Informational",DeepestObserved=7,"7 - Debug")
+| rename device as Switch
+| table Switch MostSevereName DeepestObservedName ObservedLevels Events
+| sort 0 DeepestObserved Switch</query>
+          <earliest>$tok_time.earliest$</earliest>
+          <latest>$tok_time.latest$</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <html>
+        <div class="uc">
+          <b>هدف:</b> مقایسه توزیع Severity بین سوئیچ‌ها و شناسایی تجهیزاتی که فقط بخشی از سطوح را ارسال می‌کنند.</div>
+      </html>
+      <chart>
+        <title>توزیع Severity به تفکیک سوئیچ</title>
+        <search>
+          <query>
+            <![CDATA[index=`cisco_index`
+| eval device=coalesce(dvc,host,source), sev=tonumber(severity_id)
+| search device="$tok_device$" sev>=0 sev<=7
+| eval Severity=case(sev=0,"0-Emergency",sev=1,"1-Alert",sev=2,"2-Critical",sev=3,"3-Error",sev=4,"4-Warning",sev=5,"5-Notice",sev=6,"6-Informational",sev=7,"7-Debug")
+| chart count over device by Severity limit=0]]>
+          </query>
+          <earliest>$tok_time.earliest$</earliest>
+          <latest>$tok_time.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.axisTitleX.text">Events</option>
+      </chart>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <html>
+        <div class="uc">
+          <b>هدف:</b> بررسی اینکه داده‌های هر sourcetype تا چه حد فیلدهای اصلی Cisco را استخراج کرده‌اند.</div>
+      </html>
+      <table>
+        <title>کیفیت Field Extraction به تفکیک Sourcetype</title>
+        <search>
+          <query>
+            <![CDATA[index=`cisco_index`
+| eval device=coalesce(dvc,host,source), has_severity=if(isnotnull(severity_id),1,0), has_facility=if(isnotnull(facility),1,0), has_mnemonic=if(isnotnull(mnemonic),1,0), has_message=if(isnotnull(message_text),1,0)
+| search device="$tok_device$"
+| stats count as Events sum(has_severity) as sev sum(has_facility) as fac sum(has_mnemonic) as mne sum(has_message) as msg dc(device) as Switches by sourcetype
+| eval Severity=round(100*sev/Events,1)."%", Facility=round(100*fac/Events,1)."%", Mnemonic=round(100*mne/Events,1)."%", Message=round(100*msg/Events,1)."%"
+| table sourcetype Switches Events Severity Facility Mnemonic Message
+| sort 0 - Events]]>
+          </query>
+          <earliest>$tok_time.earliest$</earliest>
+          <latest>$tok_time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">row</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+      <html>
+        <div class="uc">
+          <b>بررسی:</b> سوئیچ‌هایی که در هفت روز گذشته لاگ داشته‌اند ولی در ۲۴ ساعت اخیر Silent شده‌اند.</div>
+      </html>
+      <table>
+        <title>جزئیات سوئیچ‌های Silent</title>
+        <search>
+          <query>
+            <![CDATA[index=`cisco_index` earliest=-7d@d
+| eval device=coalesce(dvc,host,source)
+| search device="$tok_device$"
+| stats latest(_time) as LastSeen count as Events values(source) as Sources values(sourcetype) as Sourcetypes by device
+| where LastSeen < relative_time(now(),"-24h")
+| eval SilenceDuration=tostring(now()-LastSeen,"duration")
+| convert ctime(LastSeen)
+| rename device as Switch
+| table Switch LastSeen SilenceDuration Events Sources Sourcetypes
+| sort 0 LastSeen]]>
+          </query>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">row</option>
+      </table>
+    </panel>
+  </row>
+  <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/cisco/cisco_overview.xml -->
+</form>
