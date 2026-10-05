@@ -1,0 +1,300 @@
+<form version="1.1" theme="dark">
+  <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+  <label>Linux Overview</label>
+  <description>نمای کلی پوشش Hostها، Auditd، Sourceهای /var/log، حجم و سلامت دریافت داده Linux</description>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="time_range" searchWhenChanged="false">
+      <label>بازه زمانی گزارش‌دهی</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="text" token="host_filter" searchWhenChanged="false">
+      <label>Host (پیش‌فرض: همه)</label>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <html>
+    <style>
+      .dashboard-panel h2 { background:#287f85 !important; color:#fff !important; text-align:center !important; border-radius:8px 8px 0 0; }
+      .uc { direction:rtl; text-align:right; line-height:1.8; padding:8px 12px; border-right:4px solid #389EA0; background:#17242a; }
+      .uc b { color:#55d6be; }
+    </style>
+    <div class="uc">
+          <b>هدف:</b> این داشبورد Detection نیست؛ برای سنجش پوشش Hostها، Auditd، Sourceهای `/var/log/*`، Hostهای جدید یا Silent، حجم و کیفیت Parsing استفاده می‌شود. تغییر ورودی‌ها پس از زدن Submit اعمال می‌شود.</div>
+  </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>Linux Reporting Hosts</title>
+      <single>
+        <search>
+          <query>
+            <![CDATA[| tstats dc(host) AS linux_hosts where index=linux host=$host_filter$]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="underLabel">Host دارای هر نوع لاگ Linux</option>
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>Auditd Reporting Hosts</title>
+      <single>
+        <search>
+          <query>
+            <![CDATA[| tstats dc(host) AS auditd_hosts where index=linux host=$host_filter$ (sourcetype=linux:audit OR source="*/audit/audit.log")]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="underLabel">Host دارای Auditd در بازه انتخابی</option>
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>Hosts Without Auditd</title>
+      <single>
+        <search>
+          <query>
+            <![CDATA[| tstats count where index=linux host=$host_filter$ by host
+| fields host
+| eval linux_seen=1
+| append [| tstats count where index=linux host=$host_filter$ (sourcetype=linux:audit OR source="*/audit/audit.log") by host | fields host | eval auditd_seen=1]
+| stats max(linux_seen) AS linux_seen max(auditd_seen) AS auditd_seen by host
+| where linux_seen=1 AND isnull(auditd_seen)
+| stats count AS hosts_without_auditd]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="underLabel">Linux فعال بدون رویداد Auditd</option>
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>Auditd Coverage</title>
+      <single>
+        <search>
+          <query>
+            <![CDATA[| tstats count where index=linux host=$host_filter$ by host
+| fields host
+| eval linux_seen=1
+| append [| tstats count where index=linux host=$host_filter$ (sourcetype=linux:audit OR source="*/audit/audit.log") by host | fields host | eval auditd_seen=1]
+| stats max(linux_seen) AS linux_seen max(auditd_seen) AS auditd_seen by host
+| stats sum(linux_seen) AS linux_hosts sum(eval(if(auditd_seen=1,1,0))) AS covered_hosts
+| eval coverage=if(linux_hosts>0,round(covered_hosts*100/linux_hosts,1)."%","0%")
+| fields coverage]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="underLabel">درصد Hostهای Linux دارای Auditd</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>Hostهای جدید Linux در ۳۰ روز اخیر</title>
+      <html>
+        <div class="uc">
+          <b>نوع:</b> Asset Discovery | <b>بررسی:</b> مالک، نقش و IP هر Host مشخص شود تا متناسب با نقش آن مورد بررسی قرار گیرد؛ Sourceهای دریافتی، سرویس‌های فعال آن را مشخص می‌کنند. <b>تیکت:</b> برای Host ناشناس یا خارج از فرآیند Onboarding تیکت ایجاد و Sourceهای دریافتی آن در تیکت ذکر شوند.</div>
+      </html>
+      <chart>
+        <search>
+          <query>
+            <![CDATA[| tstats min(_time) AS first_seen where index=linux host=$host_filter$ by host
+| where first_seen>=relative_time(now(),"-30d@d")
+| eval _time=relative_time(first_seen,"@d")
+| timechart span=1d dc(host) AS new_linux_hosts]]>
+          </query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.drilldown">all</option>
+      </chart>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>روند حجم لاگ Linux بر اساس دسته Source</title>
+      <html>
+        <div class="uc">
+          <b>نوع:</b> Volume Monitoring | <b>بررسی:</b> افت یا جهش هر دسته مورد بررسی قرار گیرد تا مشخص شود مربوط به چه Sourceهایی و چه Hostهایی بوده است.</div>
+      </html>
+      <chart>
+        <search>
+          <query>index IN(linux,apache,nginx,zabbix) host=$host_filter$
+            | eval source_category=case(sourcetype="linux:audit" OR match(source,"/audit/audit\.log"),"auditd",match(source,"/(secure|auth\.log)"),"authentication",match(source,"/kern\.log"),"kernel",match(source,"/(messages|syslog)"),"system",match(source,"/(apache2/other_vhosts_access\.log(\.\d+)?|nginx/access\.log(\.\d+)?)"),"web_access",match(source,"/(apache2/error\.log(\.\d+)?|nginx/error\.log(\.\d+)?)"),"web_error",match(source,"/php[^/]*\.log(\.\d+)?"),"php",match(source,"/postgresql/.*\.log(\.\d+)?"),"database",match(source,"/openvswitch/(ovs-vswitchd|ovsdb-server)\.log(\.\d+)?"),"openvswitch",match(source,"/zabbix/(zabbix_agent2|zabbix_server)\.log(\.\d+)?"),"monitoring",match(source,"/(ubuntu-advantage\.log|unattended-upgrades/.*\.log)"),"updates",match(source,"/(cron|cron\.log)"),"cron",match(source,"/(yum\.log|dnf\.log|apt/history\.log|dpkg\.log)"),"package",true(),"other")
+| timechart span=30m count by source_category</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">all</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>بیشترین حجم لاگ Linux به تفکیک Host</title>
+      <html>
+        <div class="uc">
+          <b>نوع:</b> Outlier Monitoring | <b>بررسی:</b> دلیل زیاد بودن حجم لاگ Host مشخص شود؛ برای مثال بررسی شود آیا یک Source یا نوع پیام خاص، حجم بسیار بالایی تولید کرده است.</div>
+      </html>
+      <table>
+        <search>
+          <query>
+            <![CDATA[| tstats count AS events where index=linux host=$host_filter$ by host
+| eventstats sum(events) AS total_events
+| eval share_percent=round(events*100/total_events,2)
+| sort - events
+| head 30
+| rename host AS Host events AS Events share_percent AS "Share %"]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>توزیع Source و Sourcetype</title>
+      <html>
+        <div class="uc">
+          <b>نوع:</b> Onboarding Visibility</div>
+      </html>
+      <table>
+        <search>
+          <query>
+            <![CDATA[| tstats count AS events dc(host) AS hosts max(_time) AS last_seen where index=linux host=$host_filter$ by sourcetype source
+| convert ctime(last_seen)
+| sort - events]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>Hostهای Linux بدون Auditd</title>
+      <html>
+        <div class="uc">
+          <b>نوع:</b> Coverage Gap | <b>بررسی:</b> ابتدا وجود فایل `/var/log/audit/audit.log` روی Host بررسی شود؛ سپس وضعیت سرویس auditd، Audit Rules، Input و Routing کنترل شود.</div>
+      </html>
+      <table>
+        <search>
+          <query>
+            <![CDATA[| tstats count AS linux_events max(_time) AS linux_last_seen where index=linux host=$host_filter$ by host
+| eval linux_seen=1
+| append [| tstats count AS auditd_events max(_time) AS auditd_last_seen where index=linux host=$host_filter$ (sourcetype=linux:audit OR source="*/audit/audit.log") by host | eval auditd_seen=1]
+| stats max(linux_seen) AS linux_seen max(auditd_seen) AS auditd_seen max(linux_events) AS linux_events max(linux_last_seen) AS linux_last_seen max(auditd_last_seen) AS auditd_last_seen by host
+| where linux_seen=1 AND isnull(auditd_seen)
+| convert ctime(linux_last_seen)
+| sort - linux_events
+| rename host AS Host linux_events AS Linux_Events linux_last_seen AS Linux_Last_Seen]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>Hostهای Silent در ۲۴ ساعت اخیر</title>
+      <html>
+        <div class="uc">
+          <b>نوع:</b> Last-Seen Health | <b>بررسی:</b> Hostهایی که در ۷ روز قبل فعال بوده‌اند ولی ۲۴ ساعت اخیر داده ندارند با وضعیت خاموشی و Agent تطبیق داده شوند.</div>
+      </html>
+      <table>
+        <search>
+          <query>
+            <![CDATA[| tstats max(_time) AS last_seen count where index=linux host=$host_filter$ earliest=-8d@d latest=now by host
+| where last_seen<relative_time(now(),"-24h")
+| eval hours_silent=round((now()-last_seen)/3600,1)
+| convert ctime(last_seen)
+| sort - hours_silent]]>
+          </query>
+          <earliest>-8d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>تأخیر دریافت لاگ به تفکیک Host و Source</title>
+      <html>
+        <div class="uc">
+          <b>هدف:</b> شناسایی Host و Sourceهایی که لاگ آن‌ها با تأخیر وارد Splunk می‌شود. <b>بررسی:</b> اختلاف `_indextime` و `_time` از نظر NTP، Queue، Rotation و Forwarder بررسی شود.</div>
+      </html>
+      <table>
+        <search>
+          <query>
+            <![CDATA[index=linux host=$host_filter$
+| eval delay_sec=_indextime-_time
+| stats count AS events avg(delay_sec) AS avg_delay_sec perc95(delay_sec) AS p95_delay_sec max(delay_sec) AS max_delay_sec by host source
+| eval avg_delay_sec=round(avg_delay_sec,1), p95_delay_sec=round(p95_delay_sec,1)
+| sort - p95_delay_sec
+| head 40]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+      <title>کیفیت Parsing لاگ Auditd</title>
+      <html>
+        <div class="uc">
+          <b>نوع:</b> Parsing Quality | <b>بررسی:</b> درصد Null بودن فیلدهای کلیدی Auditd با Record Type مقایسه شود. <b>تیکت:</b> افت ناگهانی Extraction یا Null گسترده در `type`, `exe`, `comm`, `auid`, `uid`, `syscall`.</div>
+      </html>
+      <table>
+        <search>
+          <query>
+            <![CDATA[index=linux host=$host_filter$ (sourcetype=linux:audit OR source="*/audit/audit.log")
+| stats count AS total count(eval(isnull(type))) AS null_type count(eval(isnull(exe))) AS null_exe count(eval(isnull(comm))) AS null_comm count(eval(isnull(auid))) AS null_auid count(eval(isnull(uid))) AS null_uid count(eval(isnull(syscall))) AS null_syscall by host
+| foreach null_* [eval <<FIELD>>_pct=round('<<FIELD>>'*100/total,1)]
+| sort - total]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">true</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/linux/linux_overivew.xml -->
+</form>
