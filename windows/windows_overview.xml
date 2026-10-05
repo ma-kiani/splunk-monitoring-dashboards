@@ -1,0 +1,234 @@
+<form version="1.1" theme="dark">
+  <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+  <label>Windows Overview</label>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="time_range" searchWhenChanged="false">
+      <label>بازه زمانی گزارش‌دهی</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="text" token="host_filter" searchWhenChanged="false">
+      <label>فیلتر Host (پیش‌فرض: همه)</label>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>Windows Reporting Hosts</title>
+      <single>
+        <search>
+          <query>
+            <![CDATA[| tstats dc(host) AS windows_hosts where index=windows host=$host_filter$]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="underLabel">تعداد Host دارای لاگ Windows در بازه انتخابی</option>
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>Sysmon Reporting Hosts</title>
+      <single>
+        <search>
+          <query>
+            <![CDATA[| tstats dc(host) AS sysmon_hosts where index=sysmon host=$host_filter$]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="underLabel">تعداد Host دارای لاگ Sysmon در بازه انتخابی</option>
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>Windows Hosts Without Sysmon</title>
+      <single>
+        <search>
+          <query>
+            <![CDATA[| tstats count where index=windows host=$host_filter$ by host
+| fields host
+| eval windows_seen=1
+| append [| tstats count where index=sysmon host=$host_filter$ by host | fields host | eval sysmon_seen=1]
+| stats max(windows_seen) AS windows_seen max(sysmon_seen) AS sysmon_seen by host
+| where windows_seen=1 AND isnull(sysmon_seen)
+| stats count AS hosts_without_sysmon]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="underLabel">Windows فعال بدون هیچ رویداد Sysmon</option>
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>Sysmon Coverage</title>
+      <single>
+        <search>
+          <query>
+            <![CDATA[| tstats count where index=windows host=$host_filter$ by host
+| fields host
+| eval windows_seen=1
+| append [| tstats count where index=sysmon host=$host_filter$ by host | fields host | eval sysmon_seen=1]
+| stats max(windows_seen) AS windows_seen max(sysmon_seen) AS sysmon_seen by host
+| stats sum(windows_seen) AS windows_hosts sum(eval(if(sysmon_seen=1,1,0))) AS covered_hosts
+| eval coverage=round((covered_hosts/windows_hosts)*100,1)."%"
+| fields coverage]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="underLabel">درصد Hostهای Windows دارای Sysmon</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>Hostهای جدید Windows در ۳۰ روز اخیر</title>
+      <chart>
+        <search>
+          <query>
+            <![CDATA[| tstats min(_time) AS first_seen where index=windows host=$host_filter$ by host
+| where first_seen>=relative_time(now(),"-30d@d")
+| eval _time=relative_time(first_seen,"@d")
+| timechart span=1d dc(host) AS new_windows_hosts]]>
+          </query>
+          <earliest>0</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.drilldown">all</option>
+      </chart>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>روند حجم Windows و Sysmon</title>
+      <chart>
+        <search>
+          <query>
+            <![CDATA[| tstats count where index IN (windows,sysmon) host=$host_filter$ by _time span=30m index
+| timechart span=30m sum(count) by index]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">all</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>بیشترین حجم لاگ Windows به تفکیک Host</title>
+      <table>
+        <search>
+          <query>
+            <![CDATA[| tstats count AS events where index=windows host=$host_filter$ by host
+| eventstats sum(events) AS total
+| eval share_percent=round(events*100/total,2)
+| sort - events
+| head 25
+| rename host AS Host events AS Events share_percent AS "Share %"]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>Hostهای Windows بدون Sysmon</title>
+      <table>
+        <search>
+          <query>
+            <![CDATA[| tstats count AS windows_events max(_time) AS windows_last_seen where index=windows host=$host_filter$ by host
+| eval windows_seen=1
+| append [| tstats count AS sysmon_events max(_time) AS sysmon_last_seen where index=sysmon host=$host_filter$ by host | eval sysmon_seen=1]
+| stats max(windows_seen) AS windows_seen max(sysmon_seen) AS sysmon_seen max(windows_events) AS windows_events max(windows_last_seen) AS windows_last_seen max(sysmon_last_seen) AS sysmon_last_seen by host
+| where windows_seen=1 AND isnull(sysmon_seen)
+| convert ctime(windows_last_seen)
+| sort - windows_events
+| rename host AS Host windows_events AS Windows_Events windows_last_seen AS Windows_Last_Seen]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>پوشش Channelهای Windows برای هر Host</title>
+      <table>
+        <search>
+          <query>index=windows host=*
+| eval normalized_channel=coalesce(Channel,channel,source)
+| eval Security=if(match(normalized_channel,"(?i)security"),1,0), System=if(match(normalized_channel,"(?i)system"),1,0), Application=if(match(normalized_channel,"(?i)application"),1,0), PowerShell=if(match(normalized_channel,"(?i)powershell"),1,0)```, Defender=if(match(normalized_channel,"(?i)defender"),1,0)```
+| stats max(Security) AS Security max(System) AS System max(Application) AS Application max(PowerShell) AS PowerShell ```max(Defender) AS Defender``` max(_time) AS last_seen by host
+| convert ctime(last_seen)
+| sort host</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>تأخیر دریافت لاگ به تفکیک Host</title>
+      <table>
+        <search>
+          <query>
+            <![CDATA[index IN (windows,sysmon) host=$host_filter$
+| eval delay_sec=_indextime-_time
+| stats count AS events avg(delay_sec) AS avg_delay_sec perc95(delay_sec) AS p95_delay_sec max(delay_sec) AS max_delay_sec by host index
+| eval avg_delay_sec=round(avg_delay_sec,1), p95_delay_sec=round(p95_delay_sec,1)
+| sort - p95_delay_sec
+| head 30]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+      <title>توزیع Sourcetypeهای Windows و Sysmon</title>
+      <table>
+        <search>
+          <query>
+            <![CDATA[| tstats count AS events dc(host) AS hosts max(_time) AS last_seen where index IN (windows,sysmon) host=$host_filter$ by index sourcetype
+| convert ctime(last_seen)
+| sort index - events]]>
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+  <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/windows/windows_overview.xml -->
+</form>
