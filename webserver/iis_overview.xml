@@ -1,0 +1,258 @@
+<form version="1.1" theme="dark">
+  <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+  <label>IIS Overview</label>
+  <description>نمای کلی Traffic، Availability، Error Rate، Response Time و الگوی مصرف IIS بر پایه Web Data Model و فیلدهای IIS</description>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="time_range" searchWhenChanged="false">
+      <label>بازه زمانی</label><default><earliest>-12h@h</earliest><latest>now</latest></default>
+    </input>
+    <input type="text" token="server_filter" searchWhenChanged="false"><label>IIS Server / dest</label><default>*</default></input>
+    <input type="text" token="src_filter" searchWhenChanged="false"><label>Source IP / src</label><default>*</default></input>
+    <input type="text" token="site_filter" searchWhenChanged="false"><label>Site / Host</label><default>*</default></input>
+  </fieldset>
+
+  <row><panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml --><html>
+    <style>
+      .dashboard-panel h2 { background:#2b5f8a !important; color:#fff !important; text-align:center !important; border-radius:8px 8px 0 0; }
+      .uc { direction:rtl; text-align:right; line-height:1.8; padding:8px 12px; border-right:4px solid #3f87c5; background:#17212b; }
+      .uc b { color:#7fc4ff; }
+    </style>
+    <div class="uc"><b>هدف:</b> نمای سریع وضعیت IIS Farm. این صفحه برای تشخیص سریع افت سرویس، جهش Error، تمرکز Traffic و Endpointهای پرترافیک است؛ Investigation امنیتی از پنل‌های مرتبط به Web Investigation Drilldown می‌شود.</div>
+  </html></panel></row>
+
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>Total Requests</title>
+      <single>
+        <search><query><![CDATA[| tstats count AS requests from datamodel=Web.Web where index=iis Web.dest=$server_filter$ Web.src=$src_filter$ Web.site=$site_filter$]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="drilldown">none</option><option name="underLabel">کل Requestهای بازه</option>
+        
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>Active IIS Servers</title>
+      <single>
+        <search><query><![CDATA[| tstats dc(Web.dest) AS servers from datamodel=Web.Web where index=iis Web.dest=$server_filter$ Web.src=$src_filter$ Web.site=$site_filter$]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="drilldown">none</option><option name="underLabel">سرورهای دارای Traffic</option>
+        
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>Unique Source IPs</title>
+      <single>
+        <search><query><![CDATA[| tstats dc(Web.src) AS clients from datamodel=Web.Web where index=iis Web.dest=$server_filter$ Web.src=$src_filter$ Web.site=$site_filter$]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="drilldown">none</option><option name="underLabel">Clientهای یکتا</option>
+        
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>2xx Success Rate</title>
+      <single>
+        <search><query><![CDATA[index=iis
+| eval Web_Server=coalesce(dest_nt_host,dest,web_server,s_computername,host),
+       Source_IP=coalesce(src,src_ip,c_ip),
+       Site=coalesce(url_host,cs_host,s_sitename,site),
+       HTTP_Method=upper(coalesce(http_method,cs_method)),
+       URI_Path=coalesce(uri_path,cs_uri_stem,"/"),
+       URI_Query=coalesce(uri_query,cs_uri_query,""),
+       HTTP_Status=tonumber(coalesce(sc_status,status,iis_status)),
+       User_Agent=coalesce(http_user_agent,cs_User_Agent,""),
+       Referer=coalesce(http_referer,http_referrer,cs_Referer,""),
+       Bytes_In=tonumber(coalesce(cs_bytes,bytes_in,0)),
+       Bytes_Out=tonumber(coalesce(sc_bytes,bytes_out,0)),
+       Response_Time_MS=tonumber(time_taken)
+| search Web_Server=$server_filter$ Source_IP=$src_filter$ Site=$site_filter$
+| stats count AS total count(eval(HTTP_Status>=200 AND HTTP_Status<300)) AS success
+| eval success_rate=if(total>0,round(success*100/total,2),0)."%"
+| fields success_rate]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="drilldown">none</option><option name="underLabel">نسبت پاسخ 2xx</option>
+        
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>5xx Error Rate</title>
+      <single>
+        <search><query><![CDATA[index=iis
+| eval Web_Server=coalesce(dest_nt_host,dest,web_server,s_computername,host),
+       Source_IP=coalesce(src,src_ip,c_ip),
+       Site=coalesce(url_host,cs_host,s_sitename,site),
+       HTTP_Method=upper(coalesce(http_method,cs_method)),
+       URI_Path=coalesce(uri_path,cs_uri_stem,"/"),
+       URI_Query=coalesce(uri_query,cs_uri_query,""),
+       HTTP_Status=tonumber(coalesce(sc_status,status,iis_status)),
+       User_Agent=coalesce(http_user_agent,cs_User_Agent,""),
+       Referer=coalesce(http_referer,http_referrer,cs_Referer,""),
+       Bytes_In=tonumber(coalesce(cs_bytes,bytes_in,0)),
+       Bytes_Out=tonumber(coalesce(sc_bytes,bytes_out,0)),
+       Response_Time_MS=tonumber(time_taken)
+| search Web_Server=$server_filter$ Source_IP=$src_filter$ Site=$site_filter$
+| stats count AS total count(eval(HTTP_Status>=500 AND HTTP_Status<600)) AS errors
+| eval error_rate=if(total>0,round(errors*100/total,2),0)."%"
+| fields error_rate]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="drilldown">none</option><option name="underLabel">نسبت پاسخ 5xx</option>
+        
+      </single>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>P95 Response Time</title>
+      <single>
+        <search><query><![CDATA[index=iis
+| eval Web_Server=coalesce(dest_nt_host,dest,web_server,s_computername,host),
+       Source_IP=coalesce(src,src_ip,c_ip),
+       Site=coalesce(url_host,cs_host,s_sitename,site),
+       HTTP_Method=upper(coalesce(http_method,cs_method)),
+       URI_Path=coalesce(uri_path,cs_uri_stem,"/"),
+       URI_Query=coalesce(uri_query,cs_uri_query,""),
+       HTTP_Status=tonumber(coalesce(sc_status,status,iis_status)),
+       User_Agent=coalesce(http_user_agent,cs_User_Agent,""),
+       Referer=coalesce(http_referer,http_referrer,cs_Referer,""),
+       Bytes_In=tonumber(coalesce(cs_bytes,bytes_in,0)),
+       Bytes_Out=tonumber(coalesce(sc_bytes,bytes_out,0)),
+       Response_Time_MS=tonumber(time_taken)
+| search Web_Server=$server_filter$ Source_IP=$src_filter$ Site=$site_filter$
+| where isnotnull(Response_Time_MS)
+| stats perc95(Response_Time_MS) AS p95_ms
+| eval p95_ms=round(p95_ms,0)." ms"]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="drilldown">none</option><option name="underLabel">P95 بر اساس time_taken</option>
+        
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>Request Volume by HTTP Status Class</title>
+      <html><div class="uc"><b>نوع:</b> Traffic / Error Overview | <b>تیکت:</b> افزایش یا افت معنادار 5xx یا Requestها تیکت شوند.</div></html>
+      <chart>
+        <search><query><![CDATA[index=iis
+| eval Web_Server=coalesce(dest_nt_host,dest,web_server,s_computername,host),
+       Source_IP=coalesce(src,src_ip,c_ip),
+       Site=coalesce(url_host,cs_host,s_sitename,site),
+       HTTP_Method=upper(coalesce(http_method,cs_method)),
+       URI_Path=coalesce(uri_path,cs_uri_stem,"/"),
+       URI_Query=coalesce(uri_query,cs_uri_query,""),
+       HTTP_Status=tonumber(coalesce(sc_status,status,iis_status)),
+       User_Agent=coalesce(http_user_agent,cs_User_Agent,""),
+       Referer=coalesce(http_referer,http_referrer,cs_Referer,""),
+       Bytes_In=tonumber(coalesce(cs_bytes,bytes_in,0)),
+       Bytes_Out=tonumber(coalesce(sc_bytes,bytes_out,0)),
+       Response_Time_MS=tonumber(time_taken)
+| search Web_Server=$server_filter$ Source_IP=$src_filter$ Site=$site_filter$
+| eval Status_Class=case(HTTP_Status>=200 AND HTTP_Status<300,"2xx",HTTP_Status>=300 AND HTTP_Status<400,"3xx",HTTP_Status>=400 AND HTTP_Status<500,"4xx",HTTP_Status>=500 AND HTTP_Status<600,"5xx",true(),"Other")
+| timechart span=15m count by Status_Class]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="charting.chart">area</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>IIS Server Health Summary</title>
+      <html><div class="uc"><b>نوع:</b> Farm Health | <b>بررسی:</b> Serverهایی با 5xx بالا، Response Time غیرعادی یا سهم Traffic متفاوت بررسی شوند. <b>تیکت:</b> مواردی که Errorهای 5xx زیاد، به‌ویژه در بازه زمانی طولانی دارند، یا P95_ms آن‌ها به‌شدت بالاتر از بقیه است تیکت شوند. بالا بودن P95_ms باید در بازه زمانی حداقل یک هفته نیز بررسی شود تا مشخص شود این مقدار برای سرور عادی است یا خیر.</div></html>
+      <table>
+        <search><query><![CDATA[index=iis
+| eval Web_Server=coalesce(dest_nt_host,dest,web_server,s_computername,host),
+       Source_IP=coalesce(src,src_ip,c_ip),
+       Site=coalesce(url_host,cs_host,s_sitename,site),
+       HTTP_Method=upper(coalesce(http_method,cs_method)),
+       URI_Path=coalesce(uri_path,cs_uri_stem,"/"),
+       URI_Query=coalesce(uri_query,cs_uri_query,""),
+       HTTP_Status=tonumber(coalesce(sc_status,status,iis_status)),
+       User_Agent=coalesce(http_user_agent,cs_User_Agent,""),
+       Referer=coalesce(http_referer,http_referrer,cs_Referer,""),
+       Bytes_In=tonumber(coalesce(cs_bytes,bytes_in,0)),
+       Bytes_Out=tonumber(coalesce(sc_bytes,bytes_out,0)),
+       Response_Time_MS=tonumber(time_taken)
+| search Web_Server=$server_filter$ Source_IP=$src_filter$ Site=$site_filter$
+| stats count AS Requests dc(Source_IP) AS Unique_Clients count(eval(HTTP_Status>=400 AND HTTP_Status<500)) AS Errors_4xx count(eval(HTTP_Status>=500 AND HTTP_Status<600)) AS Errors_5xx perc95(Response_Time_MS) AS P95_ms by Web_Server
+| eval Error_5xx_Pct=round(Errors_5xx*100/Requests,2), P95_ms=round(P95_ms,0)
+| sort - Error_5xx_Pct - P95_ms]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="drilldown">row</option><option name="rowNumbers">true</option><option name="wrap">true</option>
+        <drilldown target="blank"><link>web_investigation?form.server_filter=$row.Web_Server|u$&amp;form.src_filter=*&amp;form.site_filter=*&amp;form.uri_filter=*&amp;form.attack_filter=Overview&amp;form.time_range.earliest=$earliest$&amp;form.time_range.latest=$latest$&amp;earliest=$earliest$&amp;latest=$latest$</link></drilldown>
+      </table>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>Top Source IPs</title>
+      <html><div class="uc"><b>نوع:</b> Client Concentration | <b>بررسی:</b> Sourceهای پرترافیک بررسی شوند که Client خارجی یا داخلی هستند؛ همچنین ممکن است Scanner باشند. نسبت Error به Request بررسی شود و در صورت بالا بودن Error مشخص شود کدام Hostها Error ایجاد می‌کنند. تعداد Unique URLها نیز می‌تواند تأییدکننده الگوی Scan باشد. <b>تیکت:</b> بالا بودن تعداد Requestها به‌تنهایی نشانه حمله یا دلیل ایجاد تیکت نیست و Requestهای Sourceهای مذکور باید با دقت بیشتری بررسی شوند.</div></html>
+      <table>
+        <search><query><![CDATA[index=iis
+| eval Web_Server=coalesce(dest_nt_host,dest,web_server,s_computername,host),
+       Source_IP=coalesce(src,src_ip,c_ip),
+       Site=coalesce(url_host,cs_host,s_sitename,site),
+       HTTP_Method=upper(coalesce(http_method,cs_method)),
+       URI_Path=coalesce(uri_path,cs_uri_stem,"/"),
+       URI_Query=coalesce(uri_query,cs_uri_query,""),
+       HTTP_Status=tonumber(coalesce(sc_status,status,iis_status)),
+       User_Agent=coalesce(http_user_agent,cs_User_Agent,""),
+       Referer=coalesce(http_referer,http_referrer,cs_Referer,""),
+       Bytes_In=tonumber(coalesce(cs_bytes,bytes_in,0)),
+       Bytes_Out=tonumber(coalesce(sc_bytes,bytes_out,0)),
+       Response_Time_MS=tonumber(time_taken)
+| search Web_Server=$server_filter$ Source_IP=$src_filter$ Site=$site_filter$
+| stats count AS Requests dc(URI_Path) AS Unique_URIs count(eval(HTTP_Status>=400)) AS Error_Responses values(Web_Server) AS Servers by Source_IP
+| eval Error_Pct=round(Error_Responses*100/Requests,2)
+| sort - Requests
+| head 25]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="drilldown">row</option><option name="rowNumbers">true</option><option name="wrap">true</option>
+        <drilldown target="blank"><link>web_investigation?form.server_filter=*&amp;form.src_filter=$row.Source_IP|u$&amp;form.site_filter=*&amp;form.uri_filter=*&amp;form.attack_filter=Source%20Review&amp;form.time_range.earliest=$earliest$&amp;form.time_range.latest=$latest$&amp;earliest=$earliest$&amp;latest=$latest$</link></drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>Top Requested URI Paths</title>
+      <html><div class="uc"><b>نوع:</b> Application Usage | <b>بررسی:</b> سرورهای پرترافیک، به‌ویژه سرورهایی با Error Rate بالا بررسی شوند تا مشخص شود Errorها دقیقاً روی کدام Serverها مشاهده می‌شوند و از چه Sourceهایی هستند. <b>تیکت:</b> Hostها و Siteهایی که Error Rate بالا تولید می‌کنند تیکت شوند و در تیکت Sourceهایی که Requestهای آن‌ها منجر به Error می‌شوند ذکر شوند.</div></html>
+      <table>
+        <search><query><![CDATA[index=iis
+| eval Web_Server=coalesce(dest_nt_host,dest,web_server,s_computername,host),
+       Source_IP=coalesce(src,src_ip,c_ip),
+       Site=coalesce(url_host,cs_host,s_sitename,site),
+       HTTP_Method=upper(coalesce(http_method,cs_method)),
+       URI_Path=coalesce(uri_path,cs_uri_stem,"/"),
+       URI_Query=coalesce(uri_query,cs_uri_query,""),
+       HTTP_Status=tonumber(coalesce(sc_status,status,iis_status)),
+       User_Agent=coalesce(http_user_agent,cs_User_Agent,""),
+       Referer=coalesce(http_referer,http_referrer,cs_Referer,""),
+       Bytes_In=tonumber(coalesce(cs_bytes,bytes_in,0)),
+       Bytes_Out=tonumber(coalesce(sc_bytes,bytes_out,0)),
+       Response_Time_MS=tonumber(time_taken)
+| search Web_Server=$server_filter$ Source_IP=$src_filter$ Site=$site_filter$
+| stats count AS Requests dc(Source_IP) AS Unique_Clients count(eval(HTTP_Status>=400)) AS Error_Responses values(Site) AS Sites values(Web_Server) AS Servers by URI_Path
+| eval Error_Pct=round(Error_Responses*100/Requests,2)
+| sort - Requests
+| head 30]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="drilldown">row</option><option name="rowNumbers">true</option><option name="wrap">true</option>
+        <drilldown target="blank"><link>web_investigation?form.server_filter=*&amp;form.src_filter=*&amp;form.site_filter=*&amp;form.uri_filter=$row.URI_Path|u$&amp;form.attack_filter=URI%20Review&amp;form.time_range.earliest=$earliest$&amp;form.time_range.latest=$latest$&amp;earliest=$earliest$&amp;latest=$latest$</link></drilldown>
+      </table>
+    </panel>
+    <panel>
+      <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+      <title>HTTP Method Distribution</title>
+      <html><div class="uc"><b>نوع:</b> Request Profile | <b>بررسی:</b> Methodهای غیرمعمول روی Serverهای Destination بررسی شوند که رویداد مجاز است یا خیر، در Web Application Design مجاز است یا خیر و آیا مخاطرات امنیتی مرتبط با آن رعایت شده است یا خیر. <b>تیکت:</b> Method غیرمجاز یا تغییر معنی‌دار Baseline.</div></html>
+      <chart>
+        <search><query><![CDATA[| tstats count from datamodel=Web.Web where index=iis Web.dest=$server_filter$ Web.src=$src_filter$ Web.site=$site_filter$ by Web.http_method
+| `drop_dm_object_name(Web)`
+| sort - count]]></query><earliest>$time_range.earliest$</earliest><latest>$time_range.latest$</latest></search>
+        <option name="charting.chart">column</option>
+        <option name="charting.drilldown">all</option>
+        
+        
+      </chart>
+    </panel>
+  </row>
+  <!-- Maintainer: Kiani | GitHub: https://github.com/ma-kiani/splunk-monitoring-dashboards | Source: https://github.com/ma-kiani/splunk-monitoring-dashboards/blob/main/webserver/iis_overview.xml -->
+</form>
